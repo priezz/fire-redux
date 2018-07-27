@@ -1,0 +1,69 @@
+{
+    "compilerOptions": {
+        // "allowJs": true,
+        "allowUnreachableCode": false,
+        "allowUnusedLabels": false,
+        "allowSyntheticDefaultImports": true,
+        "alwaysStrict": true,
+        "baseUrl": ".",
+        "charset": "utf-8",
+        // "checkJs": true,
+        "declaration": true,
+        "experimentalDecorators": true,
+        "forceConsistentCasingInFileNames": true,
+        "importHelpers": true,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "newLine": "LF",
+        "noEmit": false,
+        "noEmitHelpers": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": false,
+        "outDir": "lib",
+        "preserveConstEnums": true,
+        "pretty": true,
+        "removeComments": true,
+        "skipDefaultLibCheck": true,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "strict": true,
+        // "strictFunctionTypes": true,
+        "strictNullChecks": true,
+        "suppressImplicitAnyIndexErrors": false,
+
+        // Specific for WEB
+        "downlevelIteration": true,
+        "lib": [
+            "dom",
+            "es5",
+            "es6",
+            "es2015",
+            "es2016",
+            "es7",
+            "es2017",
+            "esnext"
+        ],
+        "paths": {
+            "*": ["src/*"],
+            "~*": ["src/*"]
+        },
+        // "rootDir": "./src",
+        "target": "es5",
+        "typeRoots": ["node_modules/@types"]
+    },
+    "include": [
+        // "src/**/*"
+        "src", "../../panel/src/lib/firebaseConfig.ts", "../../panel/src/lib/firebase/firebaseConfig.ts"
+    ],
+    "exclude": [
+        "lib",
+        "node_modules"
+    ],
+    "types": [
+        "typePatches"
+    ],
+    "compileOnSave": false
+}

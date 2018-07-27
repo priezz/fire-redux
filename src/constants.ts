@@ -1,0 +1,20 @@
+export const CREATE = 'CREATE'
+export const DELETE = 'DELETE'
+export const GET_LIST = 'GET_LIST'
+export const GET_MANY = 'GET_MANY'
+export const GET_MANY_REFERENCE = 'GET_MANY_REFERENCE'
+export const GET_ONE = 'GET_ONE'
+export const UPDATE = 'UPDATE'
+
+export const AUTH_CHECK = 'AUTH_CHECK'
+export const AUTH_GET_PERMISSIONS = 'AUTH_GET_PERMISSIONS'
+export const AUTH_ERROR = 'AUTH_ERROR'
+export const AUTH_LOGIN = 'AUTH_LOGIN'
+export const AUTH_LOGIN_ANONYMOUS = 'AUTH_LOGIN_ANONYMOUS'
+export const AUTH_LOGOUT = 'AUTH_LOGOUT'
+
+export const ROLE_ADMIN = 'admin'
+export const ROLE_MANAGER = 'manager'
+export const ROLE_USER = 'user'
+export const ROLE_ANONYMOUS = 'anonymous'
+
