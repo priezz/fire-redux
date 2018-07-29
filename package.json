@@ -5,7 +5,7 @@
     "bugs": {
         "url": "https://gitlab.com/priezz/fire-redux/issues"
     },
-    "description": "Library, which transparently transferes Firestore state to Redux. React Native and Admin-on-rest conpatible.",
+    "description": "Library, which transparently transferes Firestore state to Redux. React Native and React-admin / Admin-on-rest conpatible.",
     "homepage": "https://gitlab.com/priezz/fire-redux#readme",
     "keywords": [
         "firebase",
@@ -24,7 +24,7 @@
         "prepare": "tsc",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
-    "version": "0.3.0",
+    "version": "0.3.2",
     "dependencies": {
         "base64-js": "^1.3.0",
         "rambda": "^1.1.5"

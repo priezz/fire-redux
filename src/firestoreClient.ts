@@ -17,7 +17,7 @@ import {
     UPDATE,
 } from './constants'
 import * as Methods from './methods'
-import {firebase} from './platformic'
+import { firebase } from './platformic'
 import {
     deepClone,
     nextFrame,
@@ -69,31 +69,31 @@ const BaseConfiguration = {
 }
 interface ClientOptions {
     timestampFieldNames?: any,
-    trackedResources: {[key: string]: ResourceDef},
+    trackedResources: { [key: string]: ResourceDef },
 }
 
 
 export default class FirestoreClient {
     public timestampFieldNames: any
-    private _resourcesMeta: {[key: string]: ResourceMeta} = {}
+    private _resourcesMeta: { [key: string]: ResourceMeta } = {}
     private _subscriptionQueue: string[] = []
     private _subscriptionQueueAuth: string[] = []
 
     constructor(options: ClientOptions, firebaseConfig: any) {
-        if(firebaseConfig && firebase.apps.length === 0) {
+        if (firebaseConfig && firebase.apps.length === 0) {
             firebase.initializeApp(firebaseConfig)
         }
-        if(firebaseConfig && firebaseConfig.firestore) {
+        if (firebaseConfig && firebaseConfig.firestore) {
             firebase.firestore().settings(firebaseConfig.firestore)
         }
 
-        const _options = {...BaseConfiguration, ...options}
+        const _options = { ...BaseConfiguration, ...options }
         this.timestampFieldNames = _options.timestampFieldNames
-        console.debug('FirestoreClient/constructor()')
-        const {trackedResources} = _options
+        console.debug('[FirestoreClient] constructor()')
+        const { trackedResources } = _options
         Object.keys(trackedResources).forEach((resourceName: string) => {
-            const {authRequired = false, hooks = [], path = resourceName, priority = 0, schema = {}} = trackedResources[resourceName]
-            // console.log('FirestoreClient/init() New resource -', resourceName)
+            const { authRequired = false, hooks = [], path = resourceName, priority = 0, schema = {} } = trackedResources[resourceName]
+            // console.log('[FirestoreClient] init() New resource -', resourceName)
             this._resourcesMeta[resourceName] = {
                 ...trackedResources[resourceName],
                 authRequired,
@@ -102,14 +102,15 @@ export default class FirestoreClient {
                 priority,
                 schema,
             }
+            // Actions.resources.updateData({ resource: resourceName, data: {} })
         })
     }
 
     public startSync() {
-        console.debug('FirestoreClient/startSync()')
+        console.debug('[FirestoreClient] startSync()')
 
         const sortFn = (a: string, b: string) => (this._resourcesMeta[a].priority || 0) - (this._resourcesMeta[b].priority || 0)
-        if(getUserId()) {
+        if (getUserId()) {
             this._subscriptionQueue = Object.keys(this._resourcesMeta).sort(sortFn)
         } else {
             this._subscriptionQueue = Object.keys(this._resourcesMeta)
@@ -123,12 +124,12 @@ export default class FirestoreClient {
         this.subscribeNext()
 
         runOnLogin(() => {
-            if(!this._subscriptionQueueAuth.length) return
-            console.debug('FirestoreClient/startSync() runOnLogin', this._subscriptionQueueAuth.length)
+            if (!this._subscriptionQueueAuth.length) return
+            console.debug('[FirestoreClient] startSync() runOnLogin', this._subscriptionQueueAuth.length)
             const currentQueueLength = this._subscriptionQueue.length
             this._subscriptionQueue.push(...this._subscriptionQueueAuth)
             this._subscriptionQueueAuth = []
-            if(!currentQueueLength) this.subscribeNext()
+            if (!currentQueueLength) this.subscribeNext()
         })
     }
 
@@ -150,21 +151,21 @@ export default class FirestoreClient {
 
     public rest = async (method: string, resourceName: string, options: any = {}) => {
         await nextFrame()
-        let result: any = {data: [], total: 0, ids: []}
+        let result: any = { data: [], total: 0, ids: [] }
 
         const resource = (getState().resources || {})[resourceName]
-        // console.log(`FirestoreClient/callMethod()`, method, resourceName, options, resource, getState())
-        if(!resource) return result
+        // console.log(`[FirestoreClient] callMethod()`, method, resourceName, options, resource, getState())
+        if (!resource) return result
 
         const meta = this._resourcesMeta[resourceName]
         const beforeHooks = meta.hooks.filter((hook) => hook.events.indexOf('BEFORE_' + method) > -1)
         const afterHooks = meta.hooks.filter((hook) => hook.events.indexOf('AFTER_' + method) > -1)
 
         let data = options.data || {}
-        for(const hook of beforeHooks) data = await hook.handler(data)
+        for (const hook of beforeHooks) data = await hook.handler(data)
 
         const collection = resource.data || {}
-        switch(method) {
+        switch (method) {
             case GET_LIST:
             case GET_MANY:
             case GET_MANY_REFERENCE:
@@ -187,9 +188,9 @@ export default class FirestoreClient {
                 break
 
             case UPDATE:
-                if(!options.id) {
-                    console.warn('FirestoreClient/_callMethod() No ID provided when calling UPDATE')
-                    result = {data}
+                if (!options.id) {
+                    console.warn('[FirestoreClient] _callMethod() No ID provided when calling UPDATE')
+                    result = { data }
                     break
                 }
             case CREATE:
@@ -211,22 +212,22 @@ export default class FirestoreClient {
                     uploadFn: upload,
                 })
                 /// Latency compensation for newly created items
-                if(isNew) collection[result.data.id] = result.data
+                if (isNew) collection[result.data.id] = result.data
                 break
 
             default:
-                console.warn('FirestoreClient/_callMethod() Undocumented method:', method)
+                console.warn('[FirestoreClient] _callMethod() Undocumented method:', method)
         }
 
-        for(const hook of afterHooks) result.data = await hook.handler(result.data || {})
-        // console.debug("FirestoreClient/callMethod()", method, resourceName, result)
+        for (const hook of afterHooks) result.data = await hook.handler(result.data || {})
+        // console.debug("[FirestoreClient] callMethod()", method, resourceName, result)
         return result
     }
 
     private _subscribe = (resourceName: string) => {
         const meta = this._resourcesMeta[resourceName]
-        if(!meta || meta.unsubscribe) return // do nothing if subscribed already
-        // console.debug('FirestoreClient/_subscribe()', resourceName)
+        if (!meta || meta.unsubscribe) return // do nothing if subscribed already
+        // console.debug('[FirestoreClient] _subscribe()', resourceName)
 
         const db = firebase.firestore()
         let syncedOnce = false
@@ -234,11 +235,11 @@ export default class FirestoreClient {
 
         /* Apply filters */
         let filters = (typeof meta.filter === 'function' ? meta.filter() : meta.filter) || []
-        if(!Array.isArray(filters[0])) filters = [filters]
+        if (!Array.isArray(filters[0])) filters = [filters]
         filters.forEach((filter: string[3], i: number) => {
-            if(!filter.length) return
-            console.debug('FirestoreClient/_subscribe() Apply filter for', resourceName, '-', filter)
-            if(i === filters.length - 1
+            if (!filter.length) return
+            console.debug('[FirestoreClient] _subscribe() Apply filter for', resourceName, '-', filter)
+            if (i === filters.length - 1
                 && filter.length === 3 && filter[0] === 'id' && filter[1] === '=='
             ) {
                 meta.ref = meta.ref.doc(filter[2])
@@ -246,109 +247,109 @@ export default class FirestoreClient {
                 meta.ref = meta.ref.where(...filter)
             }
         })
-        if(meta.sortField) {
+        if (meta.sortField) {
             const sortField = typeof meta.sortField === 'function' ? meta.sortField() : meta.sortField
             meta.ref = meta.ref.orderBy(sortField, meta.sortDirection || 'asc')
         }
-        if(meta.limit) meta.ref = meta.ref.limit(meta.limit)
-        if(meta.document) meta.ref = meta.ref.doc(meta.document)
+        if (meta.limit) meta.ref = meta.ref.limit(meta.limit)
+        if (meta.document) meta.ref = meta.ref.doc(meta.document)
 
-        if(meta.ref._documentPath) console.debug('FirestoreClient/_subscribe() Ref', resourceName, meta.ref._documentPath._parts.join('/'))
+        if (meta.ref._documentPath) console.debug('[FirestoreClient] _subscribe() Ref', resourceName, meta.ref._documentPath._parts.join('/'))
 
         let processing = false
         try {
             meta.unsubscribe = meta.ref.onSnapshot(async (snapshot: any) => {
-                if(processing) {
-                    console.debug('FirestoreClient/_subscribe() Ignoring', resourceName)
+                if (processing) {
+                    console.debug('[FirestoreClient] _subscribe() Ignoring', resourceName)
                     return
                 }
                 processing = true
-                if(meta.minSyncInterval) {
-                    if(meta.unsubscribe) meta.unsubscribe()
+                if (meta.minSyncInterval) {
+                    if (meta.unsubscribe) meta.unsubscribe()
                     meta.unsubscribe = undefined
-                    console.debug('FirestoreClient/_subscribe() Unsubscribed', resourceName)
+                    console.debug('[FirestoreClient] _subscribe() Unsubscribed', resourceName)
                     setTimeout(() => this.subscribe(resourceName), meta.minSyncInterval) // TODO: Replace with CRON-like timer (look for the library)
                 }
 
-                console.debug('FirestoreClient/_subscribe() Got snapshot', resourceName, snapshot.docs ? snapshot.docs.length : (snapshot._data ? 1 : 0))
+                console.debug('[FirestoreClient] _subscribe() Got snapshot', resourceName, snapshot.docs ? snapshot.docs.length : (snapshot._data ? 1 : 0))
 
                 const data: any = {}
-                if(snapshot.docs) {
+                if (snapshot.docs) {
                     await mapInFrames(
                         snapshot.docs,
                         async (doc: any) => {
-                            const {id} = doc
+                            const { id } = doc
                             data[id] = await this.getData(doc, false, meta.schema)
                             data[id].id = id
                         },
                     )
-                } else if(snapshot._ref) {
-                    const {id} = snapshot._ref
-                    data[id] = {...(await this.getData(snapshot, false, meta.schema)), id}
+                } else if (snapshot._ref) {
+                    const { id } = snapshot._ref
+                    data[id] = { ...(await this.getData(snapshot, false, meta.schema)), id }
                 }
 
-                Actions.resources.updateData({resource: resourceName, data})
-                console.log('FirestoreClient/_subscribe() Fetched', resourceName, Object.keys(data).length, Actions.resources)
-                if(!syncedOnce) {
+                Actions.resources.updateData({ resource: resourceName, data })
+                console.log('[FirestoreClient] _subscribe() Fetched', resourceName, Object.keys(data).length, Actions.resources)
+                if (!syncedOnce) {
                     const state = getState().resources || {}
-                    if(!state.loaded && !this._subscriptionQueue.length) Actions.resources.dataLoaded()
+                    if (!state.loaded && !this._subscriptionQueue.length) Actions.resources.dataLoaded()
                     syncedOnce = true
                 }
-                // console.log('FirestoreClient/_subscribe() Written to Redux', resourceName, getState())
+                // console.log('[FirestoreClient] _subscribe() Written to Redux', resourceName, getState())
 
                 const hooks = meta.hooks.filter((hook) => hook.events.indexOf('ON_LOAD') > -1)
-                for(const hook of hooks) await hook.handler(data)
+                for (const hook of hooks) await hook.handler(data)
 
                 processing = false
-                if(this._subscriptionQueue.length) this.subscribeNext()
+                if (this._subscriptionQueue.length) this.subscribeNext()
             })
-            console.debug('FirestoreClient/_subscribe() Subscribed to', resourceName)
-        } catch(e) {
-            console.warn('FirestoreClient/_subscribe() Failed to subscribe', resourceName, e.message)
+            console.debug('[FirestoreClient] _subscribe() Subscribed to', resourceName)
+        } catch (e) {
+            console.warn('[FirestoreClient] _subscribe() Failed to subscribe', resourceName, e.message)
         }
     }
 
     // private subscribeNext = () => this.subscribe(this._subscriptionQueue.shift())
     private subscribeNext = () => {
         const next = this._subscriptionQueue.shift()
-        // console.debug('FirestoreClient/subscribeNext()', next, [...this._subscriptionQueue])
+        // console.debug('[FirestoreClient] subscribeNext()', next, [...this._subscriptionQueue])
         this.subscribe(next)
     }
 
     private _unsubscribe = (resourceName: string, logout = false) => {
         const meta = this._resourcesMeta[resourceName]
-        if(!meta.unsubscribe) return // do nothing if not subscribed
+        if (!meta.unsubscribe) return // do nothing if not subscribed
 
         meta.unsubscribe()
         meta.unsubscribe = undefined
-        if(logout) {
-            Actions.resources.updateData({resource: resourceName, data: {}})
+        if (logout) {
+            // Actions.resources.updateData({resource: resourceName, data: {}})
             this._subscriptionQueueAuth.push(resourceName)
         }
     }
 
     private subscribe = (resourceName: string | undefined) => {
-        if(!resourceName) return
+        if (!resourceName) return
 
         const meta = this._resourcesMeta[resourceName]
-        if(!meta || meta.unsubscribe) return
-        // console.debug('FirestoreClient/subscribe()', resourceName)
+        if (!meta || meta.unsubscribe) return
+        // console.debug('[FirestoreClient] subscribe()', resourceName)
 
         const subscribeAsync = () => runAsync(() => this._subscribe(resourceName))
-        if(!meta.authRequired) {
+        if (!meta.authRequired) {
             subscribeAsync()
             return
         }
-        if(getUserId()) {
+        if (getUserId()) {
             subscribeAsync()
         } else {
             this._subscriptionQueueAuth.push(resourceName)
             this.subscribeNext()
-            console.debug(`FirestoreClient/subscribe() Subscription for "${resourceName}" queued`)
+            console.debug(`[FirestoreClient] subscribe() Subscription for "${resourceName}" queued`)
         }
 
         runOnRolesChange(async () => {
-            console.log('FirestoreClient/runOnRolesChange()', resourceName)
+            console.log('[FirestoreClient] runOnRolesChange()', resourceName)
             this._unsubscribe(resourceName)
             subscribeAsync()
             // this._subscriptionQueueAuth.push(resourceName)
@@ -357,7 +358,7 @@ export default class FirestoreClient {
             // this.subscribeNext()
         })
         runOnLogout(() => {
-            console.debug('FirestoreClient/subscribe() runOnLogout', resourceName)
+            console.debug('[FirestoreClient] subscribe() runOnLogout', resourceName)
             this._unsubscribe(resourceName, true)
         })
     }
@@ -365,42 +366,42 @@ export default class FirestoreClient {
     private async getData(doc: any, isRef: boolean = false, schema: any = {}) {
         let result: any = {}
         try {
-            if(isRef) {
+            if (isRef) {
                 const path = _documentPath(doc)
 
                 //* Find object within the fetched data, fetch if not found */
                 const state = getState()
                 const obj = R.path(`${path[0]}.data.${path.slice(1).join('.')}`, state.resources)
-                if(!obj) {
+                if (!obj) {
                     // await nextFrame()
                     const innerDoc = await doc.get()
                     // TODO: Consider subscription to the item here
                     result = await this.getData(innerDoc, false, schema)
                 } else {
-                    result = {...obj}
+                    result = { ...obj }
                 }
 
                 result.__ref = path.join('/')
-            } else if(doc.exists) {
+            } else if (doc.exists) {
                 result = doc.data()
                 delete result.__ref
-                for(const key of Object.keys(result)) {
-                    if(_documentPath(result[key])) {
+                for (const key of Object.keys(result)) {
+                    if (_documentPath(result[key])) {
                         // await nextFrame()
-                        if(!schema._ignoreReferences) {
+                        if (!schema._ignoreReferences) {
                             result[key] = await this.getData(result[key], true, schema)
                         } else {
                             delete result[key]
                         }
                     } else {
-                        if(result[key] instanceof Date) {
+                        if (result[key] instanceof Date) {
                             result[key] = result[key].toISOString()
                         }
                     }
                 }
             }
-        } catch(e) {
-            console.warn('FirestoreClient/getData()', _documentPath(doc._ref || doc).join('/'), e.message, isRef)
+        } catch (e) {
+            console.warn('[FirestoreClient] getData()', _documentPath(doc._ref || doc).join('/'), e.message, isRef)
         }
 
         /* Deep clean from nulls as they are not recognized correctly when setting default values for props */
@@ -409,7 +410,7 @@ export default class FirestoreClient {
 }
 
 function _documentPath(doc: any) {
-    if(!doc) return
-    if(doc._documentPath) return doc._documentPath._parts
-    if(doc._key && doc._key.path && doc._key.path.segments) return doc._key.path.segments.slice(5)
+    if (!doc) return
+    if (doc._documentPath) return doc._documentPath._parts
+    if (doc._key && doc._key.path && doc._key.path.segments) return doc._key.path.segments.slice(5)
 }

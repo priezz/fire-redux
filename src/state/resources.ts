@@ -18,10 +18,12 @@ export type IResourcesActions = {
     updateData(payload: any): IReduce<IResourcesState>
 }
 
+export const initialState: IResourcesState = {
+    loaded: false,
+}
+
 export const Resources = State('resources', {
-    initial: {
-        loaded: false,
-    } as IResourcesState,
+    initial: initialState,
     dataLoaded: (state: IResourcesState) => ({
         ...state,
         loaded: true,
