@@ -274,7 +274,7 @@ export default class FirestoreClient {
                 }
 
                 const count = snapshot.docs ? snapshot.docs.length : (snapshot._data || snapshot._document ? 1 : 0)
-                console.debug('[FirestoreClient] _subscribe() Got snapshot', resourceName, count, snapshot)
+                console.debug('[FirestoreClient] _subscribe() Got snapshot', resourceName, count)
 
                 const docs = snapshot.docs ? snapshot.docs : [snapshot]
                 const data: any = {}
