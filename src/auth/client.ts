@@ -20,9 +20,9 @@ import {
 
 let _passedAuth = false
 const _runOnLoginQueue: any[] = []
-const _runOnceOnLoginQueue: any[] = []
+let _runOnceOnLoginQueue: any[] = []
 const _runOnLogoutQueue: any[] = []
-const _runOnceOnLogoutQueue: any[] = []
+let _runOnceOnLogoutQueue: any[] = []
 const _runOnRolesChangeQueue: any[] = []
 
 
@@ -119,44 +119,59 @@ async function firebaseAuth(credentials: Credentials, resolve: any, reject: any)
     }
 }
 
-export const getUserId = () => {
-    const { userId } = getState().auth
-    return userId
-}
+export const getUserId = () => getState().auth.userId
 export const getUserRoles = () => getState().auth.roles
 export const userHasRole = (role: string): boolean => !!getUserRoles()[role.toLowerCase()]
 
 export const login = (params: any) => authClient(AUTH_LOGIN, params)
 export const logout = () => authClient(AUTH_LOGOUT)
 
-export function runOnLogin(f: () => void) {
+export function runOnLogin(f: () => void, priority = 99) {
+    if (typeof f !== 'function') return
     /* Execute only after user's roles are fetched */
     if (getUserId()) runAsync(f)
-    _runOnLoginQueue.push(f)
+    if (!_runOnLoginQueue[priority]) _runOnLoginQueue[priority] = []
+    _runOnLoginQueue[priority].push(f)
 }
 export function runOnceOnLogin(f: () => void) {
+    if (typeof f !== 'function') return
     /* Execute only after user's roles are fetched */
     if (getUserId()) runAsync(f)
     else _runOnceOnLoginQueue.push(f)
 }
-export function processLoginQueues() {
-    console.log('processLoginQueues()', _runOnceOnLoginQueue.length, _runOnLoginQueue.length)
-    while (_runOnceOnLoginQueue.length) runAsync(_runOnceOnLoginQueue.pop())
-    for (const f of _runOnLoginQueue) runAsync(f)
+export function runOnLogout(f: () => void) {
+    if (typeof f !== 'function') return
+    _runOnLogoutQueue.push(f)
+}
+export function runOnRolesChange(f: () => void) {
+    if (typeof f !== 'function') return
+    _runOnRolesChangeQueue.push(f)
+}
+export function runOnceOnLogout(f: () => void) {
+    if (typeof f !== 'function') return
+    _runOnceOnLogoutQueue.push(f)
 }
 
-export const runOnLogout = (f: () => void) => _runOnLogoutQueue.push(f)
-export const runOnRolesChange = (f: () => void) => _runOnRolesChangeQueue.push(f)
-export const runOnceOnLogout = (f: () => void) => _runOnceOnLogoutQueue.push(f)
-export function processLogoutQueues() {
-    while (_runOnceOnLogoutQueue.length) runAsync(_runOnceOnLogoutQueue.pop())
+export async function processLoginQueues() {
+    // console.debug('processLoginQueues() Once', _runOnceOnLoginQueue.length)
+    await Promise.all(_runOnceOnLoginQueue)
+    _runOnceOnLoginQueue = []
+    for (const i in _runOnLoginQueue) {
+        // console.debug('processLoginQueues() Regular', i, _runOnLoginQueue[i].length, _runOnLoginQueue[i])
+        await Promise.all(_runOnLoginQueue[i].map((f: Function) => f()))
+        // console.debug('processLoginQueues() Regular', i, 'finished.')
+    }
+}
+export async function processLogoutQueues() {
+    await Promise.all(_runOnceOnLogoutQueue)
+    _runOnceOnLogoutQueue = []
     for (const f of _runOnLogoutQueue) runAsync(f)
 }
 
 
 /* Track user's login/logout and roles changes */
 
-async function _getUserRoles(doc: any) {
+function _getUserRoles(doc: any, source?: string) {
     const { roles: prevRoles } = getState().auth
     const justLoggedIn = !Object.keys(prevRoles).length
 
@@ -166,6 +181,7 @@ async function _getUserRoles(doc: any) {
     if (roles.id) delete roles.id
     if (roles.updatedAt) delete roles.updatedAt
 
+    // console.log('[Auth] Got user roles.', { roles, prevRoles, justLoggedIn, source: source || 'onSnapshot' })
     if (objectsEqual(prevRoles, roles)) return
     Actions.auth.updateRoles(roles)
 
@@ -179,16 +195,19 @@ function startAuthStateTracking() {
         return firebase.firestore().collection('users').doc(uid).collection('roles').doc(uid)
     }
 
-    runOnLogin(async () => {
+    runOnLogin(() => new Promise((resolve) => {
         const uid = getUserId()
-        if (!uid) return
+        if (!uid) return resolve()
 
-        const _userUnsubscribe = rolesRef(uid).onSnapshot(_getUserRoles)
+        const _userUnsubscribe = rolesRef(uid).onSnapshot((doc: any) => {
+            _getUserRoles(doc)
+            resolve()
+        })
         runOnLogout(() => {
             Actions.auth.updateRoles({})
             _userUnsubscribe()
         })
-    })
+    }), 0)
 
     firebase.auth().onAuthStateChanged(async (user: any) => {
         // console.log('[Auth] onAuthStateChanged()', user)
@@ -198,8 +217,8 @@ function startAuthStateTracking() {
 
         console.log('[Auth] onAuthStateChanged() Got UID', uid)
         try {
+            _getUserRoles(await rolesRef(uid).get(), 'onAuthStateChanged')
             Actions.auth.updateToken({ idToken: await user.getIdToken(), userId: uid })
-            await _getUserRoles(await rolesRef(uid).get())
             processLoginQueues()
         } catch (e) {
             console.warn('[Auth] onAuthStateChanged() Failed to get token for', uid, user._user)

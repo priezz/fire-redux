@@ -41,22 +41,21 @@ const getMany = Methods.getMany
 
 interface ResourceDef {
     authRequired: boolean
-    document?: number
-    filter?: () => any[] | any[]
+    document?: (() => string) | string
+    filter?: (() => any[]) | any[]
     hooks: any[]
     limit?: number
     minSyncInterval?: number
-    path?: string
+    path?: (() => string) | string
     priority?: number
     schema?: any
-    sortField?: () => string | string
+    sortField?: (() => string) | string
     sortDirection?: string
 }
 interface ResourceMeta extends ResourceDef { // TODO: Extend ResourceDef type
-    path: string
     readyHook?: () => void
+    path: (() => string) | string
     ref?: any
-    schema: any
     unsubscribe?: () => void
 }
 
@@ -146,7 +145,7 @@ export default class FirestoreClient {
         return (await this.rest(GET_ONE, resourceName, options)).data
     }
     public async update(resourceName: string, options: any = {}) {
-        return (await this.rest(CREATE, resourceName, options)).data
+        return (await this.rest(UPDATE, resourceName, options)).data
     }
 
     public rest = async (method: string, resourceName: string, options: any = {}) => {
@@ -182,7 +181,7 @@ export default class FirestoreClient {
             case DELETE:
                 result = del(
                     options.id,
-                    meta.path,
+                    typeof meta.path === 'function' ? meta.path() : meta.path,
                     meta.schema,
                 )
                 break
@@ -198,14 +197,14 @@ export default class FirestoreClient {
                 const id = getItemID(
                     options,
                     isNew,
-                    meta.path,
+                    typeof meta.path === 'function' ? meta.path() : meta.path,
                     collection,
                 )
                 result = await save({
                     id,
                     isNew,
                     next: data,
-                    path: meta.path,
+                    path: typeof meta.path === 'function' ? meta.path() : meta.path,
                     prev: collection[id] || {},
                     schema: meta.schema,
                     timestampFieldNames: this.timestampFieldNames,
@@ -231,14 +230,16 @@ export default class FirestoreClient {
 
         const db = firebase.firestore()
         let syncedOnce = false
-        meta.ref = db.collection(meta.path)
+        const path = typeof meta.path === 'function' ? meta.path() : meta.path
+        const doc = typeof meta.document === 'function' ? meta.document() : meta.document
+        meta.ref = db.collection(path)
 
         /* Apply filters */
         let filters = (typeof meta.filter === 'function' ? meta.filter() : meta.filter) || []
         if (!Array.isArray(filters[0])) filters = [filters]
         filters.forEach((filter: string[3], i: number) => {
             if (!filter.length) return
-            console.debug('[FirestoreClient] _subscribe() Apply filter for', resourceName, '-', filter)
+            console.debug(`[FirestoreClient] _subscribe() Apply filter for ${resourceName}`, filter)
             if (i === filters.length - 1
                 && filter.length === 3 && filter[0] === 'id' && filter[1] === '=='
             ) {
@@ -252,9 +253,10 @@ export default class FirestoreClient {
             meta.ref = meta.ref.orderBy(sortField, meta.sortDirection || 'asc')
         }
         if (meta.limit) meta.ref = meta.ref.limit(meta.limit)
-        if (meta.document) meta.ref = meta.ref.doc(meta.document)
+        if (doc) meta.ref = meta.ref.doc(doc)
 
-        if (meta.ref._documentPath) console.debug('[FirestoreClient] _subscribe() Ref', resourceName, meta.ref._documentPath._parts.join('/'))
+        // if (doc) console.debug('[FirestoreClient] _subscribe() Ref', resourceName, meta.ref)
+        // if (meta.ref._documentPath) console.debug('[FirestoreClient] _subscribe() Ref', resourceName, meta.ref._documentPath._parts.join('/'))
 
         let processing = false
         try {
@@ -271,25 +273,22 @@ export default class FirestoreClient {
                     setTimeout(() => this.subscribe(resourceName), meta.minSyncInterval) // TODO: Replace with CRON-like timer (look for the library)
                 }
 
-                console.debug('[FirestoreClient] _subscribe() Got snapshot', resourceName, snapshot.docs ? snapshot.docs.length : (snapshot._data ? 1 : 0))
+                const count = snapshot.docs ? snapshot.docs.length : (snapshot._data || snapshot._document ? 1 : 0)
+                console.debug('[FirestoreClient] _subscribe() Got snapshot', resourceName, count, snapshot)
 
+                const docs = snapshot.docs ? snapshot.docs : [snapshot]
                 const data: any = {}
-                if (snapshot.docs) {
-                    await mapInFrames(
-                        snapshot.docs,
-                        async (doc: any) => {
-                            const { id } = doc
-                            data[id] = await this.getData(doc, false, meta.schema)
-                            data[id].id = id
-                        },
-                    )
-                } else if (snapshot._ref) {
-                    const { id } = snapshot._ref
-                    data[id] = { ...(await this.getData(snapshot, false, meta.schema)), id }
-                }
+                await mapInFrames(
+                    docs,
+                    async (doc: any) => {
+                        const { id } = doc || doc._ref
+                        data[id] = await this.getData(doc, false, meta.schema)
+                        data[id].id = id
+                    },
+                )
 
                 Actions.resources.updateData({ resource: resourceName, data })
-                console.log('[FirestoreClient] _subscribe() Fetched', resourceName, Object.keys(data).length, Actions.resources)
+                console.log('[FirestoreClient] _subscribe() Fetched', resourceName, Object.keys(data).length)
                 if (!syncedOnce) {
                     const state = getState().resources || {}
                     if (!state.loaded && !this._subscriptionQueue.length) Actions.resources.dataLoaded()
@@ -303,7 +302,7 @@ export default class FirestoreClient {
                 processing = false
                 if (this._subscriptionQueue.length) this.subscribeNext()
             })
-            console.debug('[FirestoreClient] _subscribe() Subscribed to', resourceName)
+            console.debug(`[FirestoreClient] _subscribe() Subscribed to ${resourceName} (${path}/${doc ? doc : ''})`)
         } catch (e) {
             console.warn('[FirestoreClient] _subscribe() Failed to subscribe', resourceName, e.message)
         }
