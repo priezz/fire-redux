@@ -377,7 +377,7 @@ export default class FirestoreClient {
                     // TODO: Consider subscription to the item here
                     result = await this.getData(innerDoc, false, schema)
                 } else {
-                    result = { ...obj }
+                    result = obj
                 }
 
                 result.__ref = path.join('/')

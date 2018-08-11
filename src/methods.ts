@@ -2,10 +2,8 @@ import * as R from 'rambda'
 
 import { firebase } from './platformic'
 import {
-    deepClone,
     deepObjectsDiff,
     deepObjectToStringArray,
-    // filter,
 } from './routines'
 import { uploadAttachments } from './upload'
 
@@ -163,64 +161,54 @@ export const getOne = (id: string, resourceData: any) => {
 const FILTER_IGNORE_FIELDS = ['__ref']
 export const getMany = async (params: any, resourceData: any) => {
     /** GET_MANY */
-    let ids: string[] = []
-    let data: any[] = []
-    let total = 0
+    let data: any = {}
 
     // console.log('getMany', params, resourceData)
     if (params.ids) {
-        params.ids.forEach((key: string) => {
-            if (resourceData[key]) {
-                ids.push(key)
-                data.push(resourceData[key])
-                total++
-            }
+        params.ids.forEach((id: string) => {
+            if (resourceData[id]) data[id] = resourceData[id]
         })
     } else {
-        type FilterFn = (item: any) => boolean
-        // console.log('getMany initial filters', params.filter)
-        const filters: FilterFn[] = Object.values(params.filter || {})
-            .filter((f: any) => typeof f === 'string' || typeof f === 'function')
-            .map((f: any) => {
-                if (typeof f !== 'string') return f
-
-                const normalizedF = f.toLocaleLowerCase().replace(/"/g, '').trim()
-                return (item: any) => {
-                    const value = R.path(f, item)
-                    if (typeof value !== 'undefined') {
-                        return typeof value === 'string'
-                            ? (value as string).toLocaleLowerCase().indexOf(normalizedF) > -1
-                            : false
-                    }
-                    const json = JSON.stringify(deepObjectToStringArray(item, FILTER_IGNORE_FIELDS)).replace(/\\"/g, '')
-                    // if(json.toLocaleLowerCase().indexOf(normalizedF) > -1) {
-                    //     console.log('FireStore/getMany() filter', normalizedF, json.toLocaleLowerCase().indexOf(normalizedF), json.toLocaleLowerCase())
-                    // }
-                    return json.toLocaleLowerCase().includes(normalizedF)
-                }
-            })
-        if (params.target && params.id) {
-            filters.unshift((item: any) => R.path(params.target, item) === params.id)
-        }
-        // console.debug('getMany filters', filters)
-
-        /* Ensure that all returned items have 'id' field */
-        const resourceValues = Object.keys(resourceData).map((id: string) => {
-            return Object.assign(deepClone(resourceData[id], [], [null]), { id })
-        })
-
-        const values = filters.length
-            ? resourceValues.filter((item: any) => filters.reduce((result, f) => result && f(item), true))
-            : resourceValues
-        // if(filters.length) console.debug('filtered values', values)
-
-        const keys = values.map((item: any) => item.id)
-        const { page = 1, perPage = keys.length } = params.pagination || {}
-        const _start = (page - 1) * perPage
-        const _end = page * perPage
-        data = values.slice(_start, _end)
-        ids = keys.slice(_start, _end)
-        total = values.length
+        data = resourceData
     }
-    return { data, ids, total }
+    /* Ensure that all returned items have 'id' field */
+    Object.keys(data).forEach((id: string) => data[id].id = id)
+
+    type FilterFn = (item: any) => boolean
+    // console.log('getMany initial filters', params.filter)
+    const filters: FilterFn[] = Object.values(params.filter || {})
+        .filter((f: any) => typeof f === 'string' || typeof f === 'function')
+        .map((f: any) => {
+            if (typeof f !== 'string') return f
+
+            const normalizedF = f.toLocaleLowerCase().replace(/"/g, '').trim()
+            return (item: any) => {
+                const value = R.path(f, item)
+                if (typeof value !== 'undefined') {
+                    return typeof value === 'string'
+                        ? (value as string).toLocaleLowerCase().indexOf(normalizedF) > -1
+                        : false
+                }
+                const json = JSON.stringify(deepObjectToStringArray(item, FILTER_IGNORE_FIELDS)).replace(/\\"/g, '')
+                return json.toLocaleLowerCase().includes(normalizedF)
+            }
+        })
+    if (params.target && params.id) {
+        filters.unshift((item: any) => R.path(params.target, item) === params.id)
+    }
+    // console.debug('getMany filters', filters)
+
+    let values = Object.values(data)
+    if (filters.length) values = values.filter((item: any) => filters.reduce((result, f) => result && f(item), true))
+
+    const { page = 1, perPage = values.length } = params.pagination || {}
+    const _start = (page - 1) * perPage
+    const _end = page * perPage
+    values = values.slice(_start, _end)
+
+    return {
+        data: values,
+        ids: values.map((item: any) => item.id),
+        total: values.length,
+    }
 }
