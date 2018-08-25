@@ -57,6 +57,7 @@ export function deepObjectsDiff(
             else diff[key] = value
         }
     })
+    // console.log('deepObjectsDiff()', { keys, logicalLevel, isArray, different, diff, decidedDiff: different && (logicalLevel === 0 ? diff : next), prev, next, level })
     return {
         diff: different && (logicalLevel === 0 ? diff : next),
         different,

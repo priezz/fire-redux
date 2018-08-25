@@ -160,7 +160,7 @@ export default class FirestoreClient {
         const beforeHooks = meta.hooks.filter((hook) => hook.events.indexOf('BEFORE_' + method) > -1)
         const afterHooks = meta.hooks.filter((hook) => hook.events.indexOf('AFTER_' + method) > -1)
 
-        let data = options.data || {}
+        let { data = {} } = options
         for (const hook of beforeHooks) data = await hook.handler(data)
 
         const collection = resource.data || {}
@@ -195,11 +195,12 @@ export default class FirestoreClient {
             case CREATE:
                 const isNew = method === CREATE
                 const id = getItemID(
-                    options,
+                    options.id || data.id,
                     isNew,
                     typeof meta.path === 'function' ? meta.path() : meta.path,
                     collection,
                 )
+                data.id = id
                 result = await save({
                     id,
                     isNew,

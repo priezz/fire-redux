@@ -34,7 +34,7 @@ export const save = async ({
     uploadFn,
 }: SaveArgs) => {
     try {
-        // console.log(isNew ? 'create' : 'update', id, path, JSON.parse(JSON.stringify(prev)), JSON.parse(JSON.stringify(next)))
+        // console.log(isNew ? 'create' : 'update', { id, path, prev: JSON.parse(JSON.stringify(prev)), next: JSON.parse(JSON.stringify(next)) })
         const updateData: any = diffCalculated || isNew
             ? next
             : deepObjectsDiff(prev, next, '__ref').diff
@@ -58,10 +58,10 @@ export const save = async ({
                 const localSchema = schema[key] || {}
 
                 let ref
-                let { __ref } = localUpdateData
+                let { __ref = undefined } = next[key] || {}
                 const { __ref: __refPrev = 'N/A' } = prev[key] || {}
                 const isNewRef = !__ref && localSchema._isReference === true
-                // console.log('FirestoreClient/save()', path, isNewRef, !__ref, localSchema._isReference === true)
+                // console.log('FirestoreClient/save() __', { path, isNewRef, hasRef: !!__ref, isReference: localSchema._isReference === true, localUpdateData: { ...localUpdateData } })
                 if (isNewRef) {
                     __ref = `${path}/${id}/${key}/${id}`
                     ref = firebase.firestore().collection(`${path}/${id}/${key}`).doc(id)
@@ -136,12 +136,11 @@ export const del = async (id: string, path: string, schema: any) => {
 }
 
 export const getItemID = (
-    options: any,
+    itemId: string,
     isNew: boolean,
     path: string,
     collection: any,
 ) => {
-    let itemId = options.data.id || options.id
     // console.log('FireStore/getItemID()', `${path}/${itemId}`)
     if (!itemId) itemId = firebase.firestore().collection(path).doc().id
     if (!itemId) throw new Error('ID is required')

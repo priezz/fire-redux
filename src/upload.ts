@@ -85,11 +85,10 @@ export async function uploadAttachments(
     // console.debug('FirebaseStorage/uploadAttachments()', id, media)
 
     /* Only freshly dropped media are instance of File */
-    // const newPredicate = (m: any) => m.url
-    //     && ((m.url.startsWith('file:///') && m.base64) || (m.url.startsWith('blob:') || m.url.startsWith('data:')))
     const newPredicate = (m: any) => !m.url || !m.url.startsWith('http')
     const existingMedia = media.filter((m: any) => !newPredicate(m))
     const newMedia = media.filter(newPredicate)
+    // console.debug('FirebaseStorage/uploadAttachments()', { existingMedia, newMedia })
     if (!newMedia.length) return existingMedia
 
     const path = typeof uploadPath === 'function' ? uploadPath(id) : uploadPath
