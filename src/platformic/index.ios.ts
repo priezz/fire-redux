@@ -3,6 +3,9 @@ import { FileSystem } from 'expo'
 import _firebase from 'react-native-firebase'
 
 
+_firebase.firestore().settings({
+    timestampsInSnapshots: false,
+})
 export const firebase = _firebase
 
 
