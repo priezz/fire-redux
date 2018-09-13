@@ -44,7 +44,7 @@ export const save = async ({
         if (!diffCalculated) console.debug('FirestoreClient/save()', isNew ? 'create' : 'update', 'diff:', `/${path}/${id}`, JSON.parse(JSON.stringify(updateData)))
         // if(!diffCalculated) console.log('updateData', path, id, {...updateData})
         if (Object.keys(updateData).length) {
-            const now = Date.now()
+            const now = new Date().toISOString()
             if (isNew) {
                 updateData[timestampFieldNames.createdAt] = now
                 updateData.id = id

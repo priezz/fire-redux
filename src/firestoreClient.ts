@@ -397,6 +397,7 @@ export default class FirestoreClient {
                         if (result[key] instanceof Date) {
                             result[key] = result[key].toISOString()
                         }
+                        // TODO: Consider converting in opposite direction (String -> Date), use this.timestampFieldNames
                     }
                 }
             }
