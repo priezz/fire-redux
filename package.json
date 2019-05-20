@@ -24,7 +24,7 @@
         "prepare": "tsc",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
-    "version": "0.6.0",
+    "version": "0.7.0",
     "dependencies": {
         "base64-js": "^1.3.0",
         "rambda": "^1.1.5"
@@ -51,7 +51,7 @@
         "@firebase/firestore": "^0.6.1",
         "@firebase/storage": "^0.2.3",
         "@types/react-native": "^0.56.2",
-        "expo": "^28.0.0",
+        "expo-file-system": "^28.0.0",
         "jumpstate": "github:priezz/jumpstate",
         "react-native": "github:expo/react-native#sdk-28.0.1",
         "react-native-firebase": "^4.2.0",

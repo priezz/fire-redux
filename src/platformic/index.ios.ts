@@ -1,5 +1,5 @@
 import base64 from 'base64-js'
-import { FileSystem } from 'expo'
+import FileSystem from 'expo-file-system'
 import _firebase from 'react-native-firebase'
 
 

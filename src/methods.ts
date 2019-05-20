@@ -110,8 +110,10 @@ export const save = async ({
             console.debug('FirestoreClient/save() data to save:', `/${path}/${id}`, { ...updateData })
             try {
                 await firebase.firestore().collection(path).doc(id).update(updateData)
+                // console.debug('FirestoreClient/save() update()')
             } catch (e) {
                 await firebase.firestore().collection(path).doc(id).set(updateData)
+                // console.debug('FirestoreClient/save() set()', e.message)
             }
         }
         return { data: { ...updateData, ...next, id } }
