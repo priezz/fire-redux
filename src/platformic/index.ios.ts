@@ -1,12 +1,16 @@
-import base64 from 'base64-js'
-import FileSystem from 'expo-file-system'
-import _firebase from 'react-native-firebase'
+import * as base64 from 'base64-js'
+// @ts-ignore
+import * as FileSystem from 'react-native-fs'
+import firebase from '@react-native-firebase/app'
+import auth from '@react-native-firebase/auth'
+import firestore from '@react-native-firebase/firestore'
+import storage from '@react-native-firebase/storage'
 
 
-_firebase.firestore().settings({
-    timestampsInSnapshots: false,
-})
-export const firebase = _firebase
+// firestore().settings({
+//     timestampsInSnapshots: false,
+// })
+export { auth, firebase, firestore, storage }
 
 
 function stringToUint8Array(str: string) {
@@ -18,7 +22,7 @@ function stringToUint8Array(str: string) {
 
 export async function fileToBase64(uri: string) {
     try {
-        const content = await FileSystem.readAsStringAsync(uri)
+        const content = await FileSystem.readFile(uri)
         return base64.fromByteArray(stringToUint8Array(content))
     } catch (e) {
         console.warn('FirebaseStorage/fileToBase64()', e.message)

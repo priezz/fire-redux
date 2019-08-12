@@ -1,13 +1,13 @@
 import crc32 from './crc32'
 import {
     fileToBase64Helper,
-    firebase,
+    storage,
 } from './platformic'
 
 
 export async function uploadSingleFile(f: any, writePath: string, existingMedia?: any[]) {
     const { base64: _base64, ext: _ext, rawFile, type, url } = f
-    if (!url && !rawFile) return {}
+    // if (!url && !rawFile) return {}
 
     // Workaround against strangely formed cache path by Expo on Android
     const uri = unescape(url || '')
@@ -28,7 +28,7 @@ export async function uploadSingleFile(f: any, writePath: string, existingMedia?
         ? base64Header.replace(/data:(.+);/g, '$1')
         : `${type || 'image'}/${ext}`.replace('jpg', 'jpeg') // TODO: Detect type by ext
 
-    const ref = firebase.storage().ref(`${writePath}/${crc}/origin.${ext}`)
+    const ref = storage().ref(`${writePath}/${crc}/origin.${ext}`)
     console.debug('FirebaseStorage/uploadSingleFile() Meta:', { ext, crc, contentType, ref, url, uri })
 
     /* Check if same file is already in the list */
@@ -54,11 +54,11 @@ export async function uploadSingleFile(f: any, writePath: string, existingMedia?
             /// putString() not supported yet
             // const snapshot = base64
             //     ? await ref.putString(base64, 'base64', metadata)
-            //     : await ref.put(uri, metadata)
+            //     : await ref.put(rawFile ? rawFile : uri, metadata)
             const snapshot = await ref.put(rawFile ? rawFile : uri, metadata)
             if (snapshot.state !== 'success') throw new Error('Failed to upload')
             const { bucket, fullPath } = snapshot.metadata
-            externalUrl = snapshot.downloadURL
+            externalUrl = await snapshot.ref.getDownloadURL()
                 || `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(fullPath)}`
             extraFields.createdAt = Date.now()
         } catch (e) {

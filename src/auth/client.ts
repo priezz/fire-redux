@@ -7,7 +7,7 @@ import {
     AUTH_LOGIN_ANONYMOUS,
     AUTH_LOGOUT,
 } from '../constants'
-import { firebase } from '../platformic'
+import { auth, firestore } from '../platformic'
 import {
     objectsEqual,
     runAsync,
@@ -34,7 +34,7 @@ async function authClient(type: string, params?: any) {
             processLogoutQueues()
             Actions.auth.logout()
             try {
-                if (getUserId()) firebase.auth().signOut()
+                if (getUserId()) auth().signOut()
                 return true
             } catch (e) {
                 console.warn('Firebase/authClient() Logout error.', e.message)
@@ -52,7 +52,7 @@ async function authClient(type: string, params?: any) {
                         reject(new Error())
                     }
                 }
-                /// firebase.auth() data is not available immediately on the App start
+                /// auth() data is not available immediately on the App start
                 if (_passedAuth) checker()
                 else setTimeout(checker, 900)
             })
@@ -63,7 +63,7 @@ async function authClient(type: string, params?: any) {
         case AUTH_LOGIN_ANONYMOUS:
             console.log('AUTH_LOGIN_ANONYMOUS, UID:', getUserId())
             if (getUserId()) return true
-            const { user } = await firebase.auth().signInAnonymously()
+            const { user } = await auth().signInAnonymously()
             if (user && user.uid) {
                 // console.log('Logged in, UID:', user.uid)
                 // processLoginQueues()
@@ -98,9 +98,9 @@ async function firebaseAuth(credentials: Credentials, resolve: any, reject: any)
         const { username, password, token, userId } = credentials
         const { user, additionalUserInfo } = token
             ? token
-                ? await firebase.auth().signInAndRetrieveDataWithCustomToken(token)
-                : await firebase.auth().signInAndRetrieveDataWithCredential(credentials)
-            : await firebase.auth().signInAndRetrieveDataWithEmailAndPassword(username, password)
+                ? await auth().signInAndRetrieveDataWithCustomToken(token)
+                : await auth().signInAndRetrieveDataWithCredential(credentials)
+            : await auth().signInAndRetrieveDataWithEmailAndPassword(username, password)
         if (!user || (credentials.userId && user.uid !== credentials.userId)) {
             return reject(new Error('Login failed!'))
         }
@@ -192,7 +192,7 @@ function _getUserRoles(doc: any, source?: string) {
 function startAuthStateTracking() {
     // console.log('startAuthStateTracking()')
     function rolesRef(uid: string) {
-        return firebase.firestore().collection('users').doc(uid).collection('roles').doc(uid)
+        return firestore().collection('users').doc(uid).collection('roles').doc(uid)
     }
 
     runOnLogin(() => new Promise((resolve) => {
@@ -209,7 +209,7 @@ function startAuthStateTracking() {
         })
     }), 0)
 
-    firebase.auth().onAuthStateChanged(async (user: any) => {
+    auth().onAuthStateChanged(async (user: any) => {
         // console.log('[Auth] onAuthStateChanged()', user)
         if (!user) return
         const uid = user.uid || (user._user || {}).uid
@@ -228,7 +228,7 @@ function startAuthStateTracking() {
 
 function _initAuthStateTracking() {
     const state = getState()
-    if (firebase && state && state.auth) startAuthStateTracking()
+    if (auth && state && state.auth) startAuthStateTracking()
     else setTimeout(_initAuthStateTracking, 300)
 }
 _initAuthStateTracking()

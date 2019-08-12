@@ -1,6 +1,6 @@
 import * as R from 'rambda'
 
-import { firebase } from './platformic'
+import { firestore } from './platformic'
 import {
     deepObjectsDiff,
     deepObjectToStringArray,
@@ -64,10 +64,10 @@ export const save = async ({
                 // console.log('FirestoreClient/save() __', { path, isNewRef, hasRef: !!__ref, isReference: localSchema._isReference === true, localUpdateData: { ...localUpdateData } })
                 if (isNewRef) {
                     __ref = `${path}/${id}/${key}/${id}`
-                    ref = firebase.firestore().collection(`${path}/${id}/${key}`).doc(id)
+                    ref = firestore().collection(`${path}/${id}/${key}`).doc(id)
                 } else if (__ref) {
                     // console.log('updateData ref', key, __ref)
-                    ref = firebase.firestore().doc(__ref)
+                    ref = firestore().doc(__ref)
                 }
                 if (ref) {
                     delete localUpdateData.__ref
@@ -109,10 +109,10 @@ export const save = async ({
 
             console.debug('FirestoreClient/save() data to save:', `/${path}/${id}`, { ...updateData })
             try {
-                await firebase.firestore().collection(path).doc(id).update(updateData)
+                await firestore().collection(path).doc(id).update(updateData)
                 // console.debug('FirestoreClient/save() update()')
             } catch (e) {
-                await firebase.firestore().collection(path).doc(id).set(updateData)
+                await firestore().collection(path).doc(id).set(updateData)
                 // console.debug('FirestoreClient/save() set()', e.message)
             }
         }
@@ -126,11 +126,11 @@ export const del = async (id: string, path: string, schema: any) => {
     try {
         // if(uploadFields.length) {
         //     uploadFields.map((fieldName: string) =>
-        //         firebase.storage().ref().child(`${path}/${id}/${fieldName}`).delete())
+        //         storage().ref().child(`${path}/${id}/${fieldName}`).delete())
         // }
         // console.log('FireStore/delete()', `${path}/${id}`)
         // TODO: Remove (by demand) attachmemts and subcolleclints
-        await firebase.firestore().collection(path).doc(id).delete()
+        await firestore().collection(path).doc(id).delete()
         return { data: id }
     } catch (e) {
         throw e
@@ -144,7 +144,7 @@ export const getItemID = (
     collection: any,
 ) => {
     // console.log('FireStore/getItemID()', `${path}/${itemId}`)
-    if (!itemId) itemId = firebase.firestore().collection(path).doc().id
+    if (!itemId) itemId = firestore().collection(path).doc().id
     if (!itemId) throw new Error('ID is required')
     if (isNew && collection && collection[itemId]) throw new Error('ID already in use')
     return itemId
@@ -200,7 +200,14 @@ export const getMany = async (params: any, resourceData: any) => {
     // console.debug('getMany filters', filters)
 
     let values = Object.values(data)
-    if (filters.length) values = values.filter((item: any) => filters.reduce((result, f) => result && f(item), true))
+    if (filters.length) {
+        values = values.filter(
+            (item: any) => filters.reduce<boolean>(
+                (result, f) => result && f(item),
+                true,
+            ),
+        )
+    }
 
     const { page = 1, perPage = values.length } = params.pagination || {}
     const _start = (page - 1) * perPage

@@ -17,7 +17,7 @@ import {
     UPDATE,
 } from './constants'
 import * as Methods from './methods'
-import { firebase } from './platformic'
+import { firebase, firestore } from './platformic'
 import {
     deepClone,
     nextFrame,
@@ -83,7 +83,7 @@ export default class FirestoreClient {
             firebase.initializeApp(firebaseConfig)
         }
         if (firebaseConfig && firebaseConfig.firestore) {
-            firebase.firestore().settings(firebaseConfig.firestore)
+            firestore().settings(firebaseConfig.firestore)
         }
 
         const _options = { ...BaseConfiguration, ...options }
@@ -229,7 +229,7 @@ export default class FirestoreClient {
         if (!meta || meta.unsubscribe) return // do nothing if subscribed already
         // console.debug('[FirestoreClient] _subscribe()', resourceName)
 
-        const db = firebase.firestore()
+        const db = firestore()
         let syncedOnce = false
         const path = typeof meta.path === 'function' ? meta.path() : meta.path
         const doc = typeof meta.document === 'function' ? meta.document() : meta.document
@@ -371,7 +371,7 @@ export default class FirestoreClient {
 
                 //* Find object within the fetched data, fetch if not found */
                 const state = getState()
-                const obj = R.path(`${path[0]}.data.${path.slice(1).join('.')}`, state.resources)
+                const obj = R.path<any>(`${path[0]}.data.${path.slice(1).join('.')}`, state.resources)
                 if (!obj) {
                     // await nextFrame()
                     const innerDoc = await doc.get()
