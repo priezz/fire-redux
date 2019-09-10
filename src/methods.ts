@@ -184,6 +184,7 @@ export const getMany = async (params: any, resourceData: any) => {
 
             const normalizedF = f.toLocaleLowerCase().replace(/"/g, '').trim()
             return (item: any) => {
+                // @ts-ignore
                 const value = R.path(f, item)
                 if (typeof value !== 'undefined') {
                     return typeof value === 'string'

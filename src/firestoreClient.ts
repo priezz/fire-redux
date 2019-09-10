@@ -371,6 +371,7 @@ export default class FirestoreClient {
 
                 //* Find object within the fetched data, fetch if not found */
                 const state = getState()
+                // @ts-ignore
                 const obj = R.path<any>(`${path[0]}.data.${path.slice(1).join('.')}`, state.resources)
                 if (!obj) {
                     // await nextFrame()

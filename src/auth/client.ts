@@ -98,9 +98,9 @@ async function firebaseAuth(credentials: Credentials, resolve: any, reject: any)
         const { username, password, token, userId } = credentials
         const { user, additionalUserInfo } = token
             ? token
-                ? await auth().signInAndRetrieveDataWithCustomToken(token)
-                : await auth().signInAndRetrieveDataWithCredential(credentials)
-            : await auth().signInAndRetrieveDataWithEmailAndPassword(username, password)
+                ? await auth().signInWithCustomToken(token)
+                : await auth().signInWithCredential(credentials)
+            : await auth().signInWithEmailAndPassword(username, password)
         if (!user || (credentials.userId && user.uid !== credentials.userId)) {
             return reject(new Error('Login failed!'))
         }
