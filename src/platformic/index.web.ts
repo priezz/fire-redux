@@ -48,3 +48,5 @@ export const fileToBase64 = (file: any): Promise<string> => new Promise((resolve
 export function fileToBase64Helper(rawFile: any, uri: string, url: string) {
     return fileToBase64(rawFile ? rawFile : url)
 }
+
+export const PLATFORM = 'web'

@@ -1,6 +1,7 @@
 import crc32 from './crc32'
 import {
     fileToBase64Helper,
+    PLATFORM,
     storage,
 } from './platformic'
 
@@ -46,20 +47,30 @@ export async function uploadSingleFile(f: any, writePath: string, existingMedia?
     } catch (e) {
         const metadata = {
             contentType,
-            ext,
-            name: rawFile ? rawFile.name : crc + '.' + ext,
+            customMetadata: {
+                ext,
+                name: rawFile ? rawFile.name : crc + '.' + ext,
+            },
         }
         // console.debug('FirebaseStorage/uploadSingleFile() Preparing for upload', crc, uri)
         try {
             /// putString() not supported yet
-            // const snapshot = base64
-            //     ? await ref.putString(base64, 'base64', metadata)
-            //     : await ref.put(rawFile ? rawFile : uri, metadata)
-            const snapshot = await ref.put(rawFile ? rawFile : uri, metadata)
+            const snapshot = base64
+                ? await ref.putString(base64, 'base64', metadata)
+                : PLATFORM === 'web'
+                    ? await ref.put(rawFile ? rawFile : uri, metadata)
+                    // @ts-ignore
+                    : await ref.putFile(rawFile ? rawFile : uri, metadata)
             if (snapshot.state !== 'success') throw new Error('Failed to upload')
+
             const { bucket, fullPath } = snapshot.metadata
-            externalUrl = await snapshot.ref.getDownloadURL()
-                || `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(fullPath)}`
+            if (snapshot.ref) {
+                externalUrl = await snapshot.ref.getDownloadURL()
+            }
+            if (externalUrl == null) {
+                externalUrl =
+                    `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(fullPath)}?alt=media`
+            }
             extraFields.createdAt = Date.now()
         } catch (e) {
             console.warn('FirebaseStorage/uploadSingleFile()', e, crc, uri)
